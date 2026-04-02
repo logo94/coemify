@@ -145,13 +145,25 @@ export async function loadArtistAlbums() {
                 img.style.cursor = "pointer";
 
                 // click sulla cover -> auto-riempie il form
-                img.addEventListener("click", () => {
+                img.addEventListener("click", async () => {
                     document.getElementById("album").value = d.name || "";
                     document.getElementById("genre").value = d.genre || "";
                     document.getElementById("release_date").value = d.year || "";
-
-                    // se vuoi anche aggiornare l'anteprima cover
                     document.getElementById("coverImg").src = img.src;
+
+                    // Scarica l'immagine e creane un File fittizio
+                    try {
+                        const response = await fetch(img.src);
+                        const blob = await response.blob();
+                        const file = new File([blob], "cover.jpg", { type: blob.type });
+
+                        // Inietta nel DataTransfer così coverFile.files[0] funziona
+                        const dt = new DataTransfer();
+                        dt.items.add(file);
+                        document.getElementById("coverFile").files = dt.files;
+                    } catch (e) {
+                        console.warn("Impossibile precaricare la cover:", e);
+                    }
                 });
 
                 // 2) info testo
