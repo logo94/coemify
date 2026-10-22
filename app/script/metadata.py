@@ -8,6 +8,14 @@ from mutagen.mp3 import MP3
 def extract_metadata(file_path: str):
     audio = MP3(file_path, ID3=ID3)
     
+    # Extract track number (TRCK can be "5" or "5/12" format)
+    track_number = None
+    try:
+        track_num_raw = str(audio.get("TRCK", [""])[0])
+        if track_num_raw:
+            track_number = int(track_num_raw.split("/")[0]) if track_num_raw.split("/")[0].isdigit() else None
+    except Exception: pass
+    
     metadata = {
         "title": str(audio.get("TIT2", [""])[0]),
         "artist": str(audio.get("TPE1", [""])[0]),
@@ -15,6 +23,7 @@ def extract_metadata(file_path: str):
         "duration": int(audio.info.length),
         "genre": str(audio.get("TCON", [""])[0]),
         "release_date": str(audio.get("TDRC", [""])[0]),
+        "track_number": track_number,
         "cover": None
     }
 
@@ -30,7 +39,6 @@ def extract_metadata(file_path: str):
                 )
                 break
         
-    
     return metadata
 
 # ------------------------
@@ -81,6 +89,10 @@ def update_metadata(file_path, data, cover_data=None):
     if data.get("release_date"):
         audio["TDRC"] = TDRC(encoding=3, text=data["release_date"])
 
+    # Track number (TRCK)
+    if data.get("track_number"):
+        audio["TRCK"] = TRCK(encoding=3, text=str(data["track_number"]))
+    
     # Cover (APIC)
     if cover_data:
         audio["APIC"] = APIC(

@@ -76,38 +76,24 @@ def get_navidrome_genres():
 
 
 ### DUPLICATI
-def check_duplicates_navidrome(metadata: dict):
-    query = f"{metadata.get('artist','')} {metadata.get('title','')}"
+def check_duplicates_navidrome(artist: str):
+    
     params = API_PARAMS.copy()
     params.update({
         "c": "dup-check",
-        "query": query,
+        "query": artist,
     })
-    data = navidrome_request(scope="search3", params=params)
     
+    data = navidrome_request(scope="search3", params=params)
     search_result = data.get("subsonic-response", {}).get("searchResult3", {})
     
-    albums_by_id = {
-        a["id"]: a for a in search_result.get("album", [])
-    }
-    
-    duplicates = []
+    tracks = []
 
     for s in search_result.get("song", []):
-        album = albums_by_id.get(s.get("albumId"), {})
+        if s.get("artist", "").lower() == artist.lower():
+            tracks.append(s.get("title"))
 
-        duplicates.append({
-            "title": s.get("title"),
-            "artist": s.get("artist"),
-            "album": s.get("album"),
-            "year": s.get("year"),
-            "genre": (
-                album.get("genre")
-                or (album.get("genres", [{}])[0].get("name"))
-            ),
-        })
-
-    return duplicates
+    return tracks
 
 ### INFORMAZIONI ALBUM
 def get_albums_by_artist(artist_id: str):

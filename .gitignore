@@ -2,3 +2,5 @@
 pyenv
 files/*.mp3
 __pycache__
+deploy.sh
+venv/

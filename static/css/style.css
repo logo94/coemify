@@ -4,7 +4,7 @@ html {
 
 body {
     background: linear-gradient(to right, #4e54c8, #8f94fb);
-    min-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -65,22 +65,22 @@ body {
 #dashboardContent {
     width: 100%;
     max-width: 1200px;
+    max-height: 100%;
 }
 
 .cover-container img {
     width: 100%;
-    max-width: 250px;
     border-radius: 10px;
-    margin-bottom: 15px;
+    margin: 0;
 }
 
 #uploadCoverBtn {
-    background-color: white;
+    background-color: transparent;
     color: #4e54c8;
     border: none;
     border-radius: 8px;
-    padding: 10px;
-    margin-top: 10px;
+    margin-top: 15px;
+    margin-bottom: 25px;
     cursor: pointer;
     transition: 0.3s;
     width: 100%;
@@ -89,6 +89,11 @@ body {
 
 #uploadCoverBtn:hover {
     background-color: #3b40a4;
+}
+
+.form-control::placeholder {
+    color: white;
+    opacity: 1;
 }
 
 button {
@@ -189,6 +194,11 @@ button:hover {
     background-color: rgba(139, 111, 214, 0.75);
 }
 
+.track-title {
+    background-color: rgba(255, 255, 255, 0.9);
+    border: none;
+    flex: 1;
+}
 
 .login-container {
     background-color: rgba(255, 255, 255, 0.95);
@@ -236,4 +246,46 @@ button:hover {
     margin-top: 15px;
     font-size: 12px;
     color: #666;
+}
+
+.track-title:focus {
+    background-color: white;
+    box-shadow: 0 0 0 2px rgba(78, 84, 200, 0.5);
+}
+
+.track-number {
+    background-color: rgba(255, 255, 255, 0.9);
+    border: none;
+}
+
+.track-number:focus {
+    background-color: white;
+    box-shadow: 0 0 0 2px rgba(78, 84, 200, 0.5);
+}
+
+.duplicate-badge {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.75rem;
+    color: #dc3545;
+    pointer-events: none;
+    display: none;
+}
+
+.title.is-duplicate {
+    padding-right: 80px; /* spazio per la scritta */
+    border-color: #dc3545 !important;
+}
+
+/* Hide number input arrows */
+.track-number::-webkit-outer-spin-button,
+.track-number::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.track-number {
+    -moz-appearance: textfield;
 }

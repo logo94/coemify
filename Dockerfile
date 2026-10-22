@@ -1,20 +1,34 @@
-FROM python:3.12-slim
+FROM python:3.11-slim
 
-# evita buffer strani nei log
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1 \
+    VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:$PATH" \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_DEFAULT_TIMEOUT=100
 
-WORKDIR /
+WORKDIR /app
 
-# install dipendenze
+# Crea virtualenv
+RUN python -m venv $VIRTUAL_ENV
+
+# Upgrade strumenti DENTRO il venv
+RUN pip install --upgrade pip setuptools wheel
+
+# Copia requirements
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
 
-# copia il codice
+# Installa dipendenze nel venv (hardened)
+RUN pip install \
+    --retries 10 \
+    --timeout 100 \
+    --prefer-binary \
+    --index-url https://pypi.org/simple \
+    -r requirements.txt
+
+# Copia codice
 COPY . .
 
-# porta Fly
 EXPOSE 8080
 
-# comando di avvio (NON verrà sovrascritto)
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
-

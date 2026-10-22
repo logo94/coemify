@@ -5,6 +5,8 @@ import os
 from pathlib import Path
 import uuid
 import time
+import json
+from typing import List
 
 # FastAPI
 from fastapi import FastAPI, Response, Request, File, UploadFile, HTTPException, Form
@@ -52,7 +54,7 @@ if hasattr(settings, "HOST"):
 # Middleware per protezione dashboard
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
-        protected_paths = ["/dashboard", "/search-duplicates", "/upload-temp", "/upload-final"]
+        protected_paths = ["/dashboard", "/search-duplicates", "/upload-temp", "/upload-final", "/api/upload-temp-batch", "/api/upload-final-batch"]
         if any(request.url.path.startswith(p) for p in protected_paths):
             cookie = request.cookies.get(settings.SESSION_COOKIE_NAME)
             if cookie != "logged_in":
@@ -131,13 +133,9 @@ def dashboard(request: Request):
 
 # Ricerca duplicati
 @app.get("/api/search-duplicates")
-async def search_duplicates(title: str, artist: str):
+async def search_duplicates(artist: str):
     """Ricerca duplicati per titolo e artista"""
-    metadata = {
-        "title": title,
-        "artist": artist
-    }
-    duplicates = check_duplicates_navidrome(metadata)
+    duplicates = check_duplicates_navidrome(artist)
     return duplicates
 
 # Artisti
@@ -178,107 +176,181 @@ def navidrome_cover(cover_id: str, size: int = 250):
         media_type=r.headers.get("Content-Type", "image/jpeg")
     )
 
+
 # ------------------------------
-# Upload temporaneo + estrazione metadati
+# Batch Upload (Multi-file Album)
 # ------------------------------
 @app.post("/api/upload-temp")
-async def upload_temp(file: UploadFile, request: Request):
-    
-    # Check MIME type (solo MP3)
-    if file.content_type != "audio/mpeg":
-        raise HTTPException(400, "Sono consentiti solo file MP3")
+async def upload_temp_batch(files: List[UploadFile] = File(...)):
+    """
+    Upload multiple MP3 files temporarily and extract metadata from each.
+    Returns shared metadata (from first file) and individual track info.
+    """
+    if not files:
+        raise HTTPException(400, "Nessun file caricato")
 
-    # Check estensione (solo .mp3)
-    ext = Path(file.filename).suffix.lower()
-    if ext != ".mp3":
-        raise HTTPException(400, "Estensione non valida. È consentito solo .mp3")
-    
+    tracks = []
+    shared_metadata = None
+    errors = []
+
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-    filename = f"{uuid.uuid4()}_{Path(file.filename).name}"
-    temp_path = UPLOAD_DIR / filename
-    
-    contents = await file.read()
-    if len(contents) > MAX_SIZE:
-        raise HTTPException(
-            400,
-            f"File troppo grande (max {settings.MAX_UPLOAD_SIZE_MB} MB)"
-        )
+    for i, file in enumerate(files):
+        
+        try:
+            # Check MIME type (solo MP3)
+            if file.content_type != "audio/mpeg":
+                errors.append(file.filename + ": tipologia di file non valida")
+                continue
 
-    try:
-        temp_path.write_bytes(contents)
-    except Exception as e:
-        raise HTTPException(500, f"Errore durante il salvataggio del file: {str(e)}")
+            # Check estensione (solo .mp3)
+            ext = Path(file.filename).suffix.lower()
+            if ext != ".mp3":
+                errors.append(file.filename + ": estensione non valida")
+                continue
 
-    if not temp_path.is_file():
-        raise HTTPException(500, "Il file non è stato salvato correttamente.")
+            filename = f"{uuid.uuid4()}_{Path(file.filename).name}"
+            temp_path = UPLOAD_DIR / filename
 
-    metadata = extract_metadata(temp_path)
+            contents = await file.read()
+            if len(contents) > MAX_SIZE:
+                errors.append(file.filename + ": file troppo grande")
+                continue
+
+            try:
+                temp_path.write_bytes(contents)
+            except Exception as e:
+                errors.append(file.filename + ": errore durante il salvataggio - " + str(e))
+                continue
+                
+            if not temp_path.is_file():
+                errors.append(file.filename + ": file non salvato correttamente")
+                continue
+
+            metadata = extract_metadata(temp_path)
+
+            # Use first file's metadata as shared defaults
+            if i == 0:
+                shared_metadata = {
+                    "album": metadata.get("album", ""),
+                    "artist": metadata.get("artist", ""),
+                    "genre": metadata.get("genre", ""),
+                    "release_date": metadata.get("release_date", ""),
+                    "cover": metadata.get("cover", None)
+                }
+
+            # Track-specific data
+            tracks.append({
+                "temp_file": filename,
+                "title": metadata.get("title", Path(file.filename).stem),
+                "duration": metadata.get("duration", ""),
+                "track_number": metadata.get("track_number"),
+                "original_filename": file.filename
+            })
+            
+        except Exception as e:
+            errors.append(file.filename + ": errore sconosciuto - " + str(e))
+            continue
 
     return {
-        "metadata": metadata,
-        "temp_file": filename
+        "album": shared_metadata,
+        "tracks": tracks,
+        "errors": errors
     }
-    
-# ------------------------------
-# Upload finale e SFTP
-# ------------------------------
-# Funzione per caricare il file e metadati
+
+
 @app.post("/api/upload-final")
-async def upload_final(
-    temp_file: str = Form(...),
-    title: str = Form(...),
+async def upload_final_batch(
     artist: str = Form(...),
     album: str = Form(...),
     genre: str = Form(...),
-    duration: str = Form(...),
     release_date: str = Form(...),
+    tracks: str = Form(...),  # JSON: [{temp_file, title, duration}, ...]
     cover: UploadFile = File(None)
 ):
-    
-    # Verifica che il file temporaneo esista
-    filepath = (UPLOAD_DIR / temp_file).resolve()
-    
-    print(filepath)
-    
-    # Verifica che sia all'interno di UPLOAD_DIR
-    if not str(filepath).startswith(str(UPLOAD_DIR.resolve())):
-        raise HTTPException(400, "Percorso file non valido")
-
-    # Controlla che il file esista fisicamente
-    if not filepath.is_file():
-        raise HTTPException(400, "File non trovato")    
-    
-    # Se è presente una copertura, ottieni i dati dell'immagine
-    cover_data = await cover.read() if cover else None
-    
+    """
+    Upload multiple tracks with shared album metadata.
+    Each track keeps its own title and duration.
+    """
+    # Parse tracks JSON
     try:
-        await run_in_threadpool(
-            update_metadata,
-            filepath,
-            {
-                "title": title,
-                "artist": artist,
-                "album": album,
-                "genre": genre,
-                "duration": duration,
-                "release_date": release_date
-            },
-            cover_data
-        )
-        
-        upload_sftp(filepath, artist, title)
-        
-    except Exception as e:
-        # Gestisci eccezioni, magari file non trovato durante l'upload finale
-        raise HTTPException(500, f"Errore durante il caricamento finale: {str(e)}")
-        
-    finally:
-        for f in UPLOAD_DIR.iterdir():
-            if f.is_file() and time.time() - f.stat().st_mtime > 600:
-                try:
-                    f.unlink()
-                except Exception as e:
-                    print(f"Errore cancellando {f}: {e}")
+        tracks_data = json.loads(tracks)
+    except json.JSONDecodeError:
+        raise HTTPException(400, "Formato tracce non valido")
 
-    return JSONResponse({"message": "Upload completato con successo!"})
+    if not tracks_data:
+        raise HTTPException(400, "Nessuna traccia da caricare")
+
+    # Read cover data once if provided
+    try:
+        cover_data = await cover.read() if cover else None
+    except Exception:
+        raise HTTPException(400, "Errore durante la lettura della copertina")
+
+    errors = []
+    ready_files = []
+
+    for track in tracks_data:
+        
+        try:
+        
+            temp_file = track.get("temp_file")
+            title = track.get("title")
+            duration = track.get("duration", "")
+            track_number = track.get("track_number")
+
+            if not temp_file or not title:
+                errors.append(f"Traccia con dati mancanti: {track}")
+                continue
+
+            # Verify temp file exists and is valid
+            filepath = (UPLOAD_DIR / temp_file).resolve()
+
+            if not str(filepath).startswith(str(UPLOAD_DIR.resolve())):
+                errors.append(f"Percorso file non valido: {temp_file}")
+                continue
+
+            if not filepath.is_file():
+                errors.append(f"File non trovato: {temp_file}")
+                continue
+
+            # Update metadata with shared + individual data
+            await run_in_threadpool(
+                update_metadata,
+                filepath,
+                {
+                    "title": title,
+                    "artist": artist,
+                    "album": album,
+                    "genre": genre,
+                    "duration": duration,
+                    "release_date": release_date,
+                    "track_number": track_number
+                },
+                cover_data
+            )
+
+            # Upload to SFTP
+            ready_files.append((filepath, artist, title))
+
+        except Exception as e:
+            errors.append(f"Errore upload '{title}': {str(e)}")
+            
+    # Upload files to SFTP in threadpool
+    errors = upload_sftp(ready_files, errors)
+
+    # Cleanup old temp files
+    for f in UPLOAD_DIR.iterdir():
+        if f.is_file() and time.time() - f.stat().st_mtime > 600:
+            try:
+                f.unlink()
+            except Exception as e:
+                print(f"Errore cancellando {f}: {e}")
+
+    if errors:
+        return JSONResponse({
+            "message": f"Upload completato con {len(errors)} errori",
+            "errors": errors
+        }, status_code=207)
+
+    return JSONResponse({"message": f"Album '{album}' caricato con successo! ({len(tracks_data)} tracce)"})
