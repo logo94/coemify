@@ -1,102 +1,95 @@
-import { firstUpload, finalUpload } from "./upload.js";
-import { loadOptions, checkDuplicates, loadArtistAlbums } from "./api.js";
-import { debounce, openCoverDialog, previewCover } from "./utils.js";
+import { CONFIG } from "./config.js";
+import { getSession, login, logout, AuthError } from "./session.js";
+import { setSessionExpiredHandler } from "./errors.js";
+import { loadOptions, checkDuplicates, loadArtistAlbums } from "./library.js";
+import { openFile, finalUpload } from "./upload.js";
 import { searchMetadata } from "./musicbrainz.js";
+import { setCover } from "./state.js";
+import { debounce, showAlert } from "./utils.js";
+
+const $ = id => document.getElementById(id);
+
+function show(section) {
+    $("loginSection").style.display = section === "login" ? "block" : "none";
+    $("uploadSection").style.display = section === "upload" ? "block" : "none";
+    $("dashboardContent").style.display = section === "dashboard" ? "flex" : "none";
+    $("logoutBtn").style.display = section === "login" ? "none" : "inline-block";
+}
+
+async function enterApp() {
+    show("upload");
+    await loadOptions();
+}
+
+async function handleFile(file) {
+    if (!file) return;
+    if (await openFile(file)) {
+        show("dashboard");
+        await Promise.all([checkDuplicates(), loadArtistAlbums()]);
+    }
+}
 
 document.addEventListener("DOMContentLoaded", async () => {
+    $("navidromeLink").href = `${CONFIG.NAVIDROME_URL}/app/`;
+    setSessionExpiredHandler(() => show("login"));
 
-    const dropZone = document.getElementById("dropZone");
-    const fileInput = document.getElementById("audioFile");
-    const fileInfo = document.getElementById("fileInfo");
-
-    const uploadForm = document.getElementById("uploadForm")
-    const coverFile = document.getElementById("coverFile")
-    const coverBtn = document.getElementById("uploadCoverBtn")
-    const metadataForm = document.getElementById("metadataForm")
-    const metaBtn = document.getElementById("search-meta")
-    const finalUploadBtn = document.getElementById("finalUpload")
-
-    // Popolamento tendine
-    await loadOptions();
-
-    /* CLICK → file picker */
-    dropZone.addEventListener("click", () => {
-        fileInput.click();
-    });
-
-    ["dragenter", "dragover", "dragleave", "drop"].forEach(event => {
-        dropZone.addEventListener(event, e => {
-            e.preventDefault();
-            e.stopPropagation();
-        });
-    });
-
-    dropZone.addEventListener("dragover", () => {
-        dropZone.classList.add("dragover");
-    });
-
-    dropZone.addEventListener("dragleave", () => {
-        dropZone.classList.remove("dragover");
-    });
-
-    dropZone.addEventListener("drop", async (e) => {
-        dropZone.classList.remove("dragover");
-
-        if (e.dataTransfer.files.length > 0) {
-            fileInput.files = e.dataTransfer.files;
-
-            const file = e.dataTransfer.files[0];
-            fileInfo.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-        
-            await firstUpload();
-            await checkDuplicates();
+    // ---------- Login con password condivisa ----------
+    $("loginForm").addEventListener("submit", async event => {
+        event.preventDefault();
+        const button = $("loginForm").querySelector("button");
+        button.disabled = true;
+        try {
+            await login($("password").value);
+            $("password").value = "";
+            await enterApp();
+        } catch (error) {
+            showAlert(error.message, error instanceof AuthError ? "warning" : "danger");
+        } finally {
+            button.disabled = false;
         }
     });
 
-    fileInput.addEventListener("change", async () => {
-        if (fileInput.files.length > 0) {
-            const file = fileInput.files[0];
-            fileInfo.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-            
-            await firstUpload();
-            await checkDuplicates();
-        }
+    $("logoutBtn").addEventListener("click", () => {
+        logout();
+        location.reload();
     });
 
-    let debounceTimeout;
+    // ---------- Scelta del file ----------
+    const dropZone = $("dropZone");
+    const fileInput = $("audioFile");
 
-    // Aggiungi i listener con debounce
-    document.getElementById("title").addEventListener("input", debounce(debounceTimeout, checkDuplicates, 500));
-    document.getElementById("artist").addEventListener("input", debounce(debounceTimeout, checkDuplicates, 500));
-    document.getElementById("artist").addEventListener("input", debounce(debounceTimeout, loadArtistAlbums, 500));
+    dropZone.addEventListener("click", () => fileInput.click());
+    ["dragenter", "dragover", "dragleave", "drop"].forEach(name =>
+        dropZone.addEventListener(name, e => { e.preventDefault(); e.stopPropagation(); }));
+    dropZone.addEventListener("dragover", () => dropZone.classList.add("dragover"));
+    dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+    dropZone.addEventListener("drop", e => {
+        dropZone.classList.remove("dragover");
+        handleFile(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener("change", () => handleFile(fileInput.files[0]));
 
-    coverBtn.addEventListener("click", (event) => {
-        coverFile.click();
-    })
+    // ---------- Autocompilazione ----------
+    $("title").addEventListener("input", debounce(checkDuplicates, 500));
+    $("artist").addEventListener("input", debounce(() => {
+        checkDuplicates();
+        loadArtistAlbums();
+    }, 500));
 
-    coverFile.addEventListener("change", (event) => {
-        openCoverDialog(event);
-        previewCover(event);
-    })
-    
-    metaBtn.addEventListener("click", async (event) => {
-        event.preventDefault();
+    // ---------- Copertina manuale ----------
+    $("uploadCoverBtn").addEventListener("click", () => $("coverFile").click());
+    $("coverFile").addEventListener("change", async event => {
+        const file = event.target.files[0];
+        if (file) setCover(new Uint8Array(await file.arrayBuffer()));
+    });
 
-        await searchMetadata();
-    })
+    $("search-meta").addEventListener("click", searchMetadata);
+    $("finalUpload").addEventListener("click", finalUpload);
 
-    uploadForm.addEventListener("submit", async (event) => {
-        event.preventDefault();
-
-        await firstUpload();
-        await checkDuplicates();
-    })
-
-    finalUploadBtn.addEventListener("click", async (event) => {
-        event.preventDefault();
-
-        await finalUpload()
-    })
-
-
+    // ---------- Avvio ----------
+    if (getSession()) {
+        await enterApp();
+    } else {
+        show("login");
+    }
 });
