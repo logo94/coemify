@@ -2,7 +2,7 @@ import { CONFIG } from "./config.js";
 import { getSession, login, logout, AuthError } from "./session.js";
 import { setSessionExpiredHandler } from "./errors.js";
 import { loadOptions, checkDuplicates, loadArtistAlbums } from "./library.js";
-import { openFile, finalUpload } from "./upload.js";
+import { openFiles, finalUpload } from "./upload.js";
 import { searchMetadata } from "./musicbrainz.js";
 import { setCover } from "./state.js";
 import { debounce, showAlert } from "./utils.js";
@@ -21,9 +21,11 @@ async function enterApp() {
     await loadOptions();
 }
 
-async function handleFile(file) {
-    if (!file) return;
-    if (await openFile(file)) {
+async function handleFiles(files) {
+    $("uploadSpinner").style.display = "inline-block";
+    const ok = await openFiles(files);
+    $("uploadSpinner").style.display = "none";
+    if (ok) {
         show("dashboard");
         await Promise.all([checkDuplicates(), loadArtistAlbums()]);
     }
@@ -54,7 +56,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         location.reload();
     });
 
-    // ---------- Scelta del file ----------
+    // ---------- Scelta dei file (uno o più brani) ----------
     const dropZone = $("dropZone");
     const fileInput = $("audioFile");
 
@@ -65,18 +67,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
     dropZone.addEventListener("drop", e => {
         dropZone.classList.remove("dragover");
-        handleFile(e.dataTransfer.files[0]);
+        handleFiles(e.dataTransfer.files);
     });
-    fileInput.addEventListener("change", () => handleFile(fileInput.files[0]));
+    fileInput.addEventListener("change", () => handleFiles(fileInput.files));
 
     // ---------- Autocompilazione ----------
-    $("title").addEventListener("input", debounce(checkDuplicates, 500));
     $("artist").addEventListener("input", debounce(() => {
         checkDuplicates();
         loadArtistAlbums();
     }, 500));
 
-    // ---------- Copertina manuale ----------
+    // ---------- Copertina: clic sull'immagine ----------
     $("uploadCoverBtn").addEventListener("click", () => $("coverFile").click());
     $("coverFile").addEventListener("change", async event => {
         const file = event.target.files[0];

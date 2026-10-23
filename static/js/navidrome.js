@@ -71,17 +71,24 @@ export async function getGenres() {
 }
 
 // ---------- Duplicati ----------
-export async function searchSongs(artist, title) {
-    const query = `${artist} ${title}`.trim();
-    if (!query) return [];
-    const data = await call("search3", { query, songCount: 20, albumCount: 0, artistCount: 0 });
-    return (data.searchResult3?.song ?? []).map(s => ({
-        title: s.title,
-        artist: s.artist,
-        album: s.album,
-        year: s.year,
-        genre: s.genre,
-    }));
+// Tutti i titoli già presenti in Navidrome per questo artista (minuscoli)
+export async function getArtistSongTitles(artist) {
+    const name = artist.trim().toLowerCase();
+    if (!name) return new Set();
+
+    const pageSize = 500;
+    const titles = new Set();
+    for (let offset = 0; offset < 10 * pageSize; offset += pageSize) {
+        const data = await call("search3", {
+            query: artist.trim(), songCount: pageSize, songOffset: offset, albumCount: 0, artistCount: 0,
+        });
+        const page = data.searchResult3?.song ?? [];
+        for (const s of page) {
+            if ((s.artist || "").toLowerCase() === name) titles.add((s.title || "").trim().toLowerCase());
+        }
+        if (page.length < pageSize) break;
+    }
+    return titles;
 }
 
 // ---------- Album di un artista ----------

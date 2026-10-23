@@ -1,5 +1,5 @@
 // Autocompilazione e controlli sulla libreria Navidrome (ex api.js)
-import { getArtists, getAlbumNames, getGenres, searchSongs, getArtistAlbums, coverUrl, fetchCoverBytes } from "./navidrome.js";
+import { getArtists, getAlbumNames, getGenres, getArtistSongTitles, getArtistAlbums, coverUrl, fetchCoverBytes } from "./navidrome.js";
 import { escapeHtml } from "./utils.js";
 import { reportError } from "./errors.js";
 import { setCover } from "./state.js";
@@ -26,37 +26,35 @@ export async function loadOptions() {
     }
 }
 
+// ---------- Duplicati: badge rosso sui titoli già presenti per l'artista ----------
+let knownTitles = { artist: null, titles: new Set() };
+
+export function markDuplicates() {
+    document.querySelectorAll(".track-title").forEach(input => {
+        const isDup = knownTitles.titles.has(input.value.trim().toLowerCase());
+        input.classList.toggle("is-duplicate", isDup);
+        input.parentElement.querySelector(".duplicate-badge").style.display = isDup ? "block" : "none";
+    });
+}
+
+export async function checkDuplicates() {
+    const artist = document.getElementById("artist").value.trim();
+    try {
+        if (artist.toLowerCase() !== knownTitles.artist) {
+            knownTitles = { artist: artist.toLowerCase(), titles: await getArtistSongTitles(artist) };
+        }
+    } catch (error) {
+        reportError(error, "Controllo duplicati non riuscito");
+    }
+    markDuplicates();
+}
+
+// ---------- Album dell'artista (colonna destra) ----------
 function emptyItem(text) {
     const li = document.createElement("li");
     li.className = "list-group-item text-center bg-transparent border-0";
     li.textContent = text;
     return li;
-}
-
-export async function checkDuplicates() {
-    const list = document.getElementById("duplicatesList");
-    const badge = document.getElementById("dup-badge");
-    const title = document.getElementById("title").value.trim();
-    const artist = document.getElementById("artist").value.trim();
-
-    try {
-        const duplicates = await searchSongs(artist, title);
-        list.innerHTML = "";
-        badge.textContent = duplicates.length || "";
-
-        if (duplicates.length === 0) {
-            list.appendChild(emptyItem("Nessun duplicato trovato."));
-            return;
-        }
-        for (const d of duplicates) {
-            const li = document.createElement("li");
-            li.className = "list-group-item bg-transparent border-0 border-bottom d-flex align-items-center";
-            li.innerHTML = `<div class="same-artist-info"><strong>${escapeHtml(d.title)}</strong><br>${escapeHtml(d.artist)} - ${escapeHtml(d.album)} (${escapeHtml(d.year || "?")})</div>`;
-            list.appendChild(li);
-        }
-    } catch (error) {
-        reportError(error, "Controllo duplicati non riuscito");
-    }
 }
 
 export async function loadArtistAlbums() {
@@ -92,7 +90,7 @@ export async function loadArtistAlbums() {
             img.title = "Usa questo album";
             img.onerror = () => { img.src = "static/img/default.png"; };
 
-            // Click sulla copertina: compila album, anno, genere e incorpora la stessa copertina
+            // Click sulla copertina: compila album, anno, genere e usa la stessa copertina
             img.addEventListener("click", async () => {
                 document.getElementById("album").value = album.name || "";
                 document.getElementById("genre").value = album.genre || "";

@@ -7,7 +7,8 @@ function quote(text) {
 }
 
 export async function searchMetadata() {
-    const title = document.getElementById("title").value.trim();
+    // Si cerca con il titolo del primo brano dell'elenco
+    const title = document.querySelector(".track-title")?.value.trim();
     const artist = document.getElementById("artist").value.trim();
     if (!title || !artist) return showAlert("Titolo e artista obbligatori", "warning");
 

@@ -200,6 +200,47 @@ button:hover {
     flex: 1;
 }
 
+.track-title:focus {
+    background-color: white;
+    box-shadow: 0 0 0 2px rgba(78, 84, 200, 0.5);
+}
+
+.track-number {
+    background-color: rgba(255, 255, 255, 0.9);
+    border: none;
+}
+
+.track-number:focus {
+    background-color: white;
+    box-shadow: 0 0 0 2px rgba(78, 84, 200, 0.5);
+}
+
+.duplicate-badge {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.75rem;
+    color: #dc3545;
+    pointer-events: none;
+    display: none;
+}
+
+.title.is-duplicate {
+    padding-right: 80px; /* spazio per la scritta */
+    border-color: #dc3545 !important;
+}
+
+/* Hide number input arrows */
+.track-number::-webkit-outer-spin-button,
+.track-number::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.track-number {
+    -moz-appearance: textfield;
+}
 .login-container {
     background-color: rgba(255, 255, 255, 0.95);
     padding: 40px 30px;
@@ -247,45 +288,21 @@ button:hover {
     font-size: 12px;
     color: #666;
 }
+/* ---- Aggiunte versione statica ---- */
+.login-container label { display: block; }
 
-.track-title:focus {
-    background-color: white;
-    box-shadow: 0 0 0 2px rgba(78, 84, 200, 0.5);
-}
+.track-card { position: relative; }
 
-.track-number {
-    background-color: rgba(255, 255, 255, 0.9);
-    border: none;
+.track-remove {
+    background: transparent;
+    color: #999;
+    padding: 0 6px;
+    margin: 0 0 0 6px;
+    font-size: 1.1rem;
+    line-height: 1;
 }
+.track-remove:hover { background: transparent; color: #dc3545; }
 
-.track-number:focus {
-    background-color: white;
-    box-shadow: 0 0 0 2px rgba(78, 84, 200, 0.5);
-}
-
-.duplicate-badge {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 0.75rem;
-    color: #dc3545;
-    pointer-events: none;
-    display: none;
-}
-
-.title.is-duplicate {
-    padding-right: 80px; /* spazio per la scritta */
-    border-color: #dc3545 !important;
-}
-
-/* Hide number input arrows */
-.track-number::-webkit-outer-spin-button,
-.track-number::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-}
-
-.track-number {
-    -moz-appearance: textfield;
-}
+.track-status { width: 20px; text-align: center; margin-left: 6px; font-size: 0.9rem; }
+.track-status.ok { color: #198754; }
+.track-status.err { color: #dc3545; }

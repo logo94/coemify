@@ -21,6 +21,7 @@ export async function readTags(file) {
         genre: c.genre?.[0] || "",
         release_date: c.year ? String(c.year) : "",
         duration: meta.format.duration ? Math.round(meta.format.duration) : "",
+        track_number: c.track?.no || null,
         picture: picture ? { data: picture.data, format: picture.format } : null,
     };
 }
@@ -50,6 +51,9 @@ export async function writeTags(file, data, coverBytes) {
 
     const year = parseYear(data.release_date);
     if (year) writer.setFrame("TYER", year);
+
+    const track = parseInt(data.track_number, 10);
+    if (track > 0) writer.setFrame("TRCK", String(track));
 
     if (coverBytes) {
         writer.setFrame("APIC", {

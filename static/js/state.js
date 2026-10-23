@@ -1,17 +1,12 @@
-// Stato del brano in lavorazione
+// Stato dell'album in lavorazione
 export const state = {
-    file: null,   // File MP3 originale scelto dall'utente
-    cover: null,  // Uint8Array della copertina da incorporare (originale o nuova)
+    tracks: [],   // [{ id, file, title, trackNumber, duration }]
+    cover: null,  // Uint8Array della copertina da incorporare in tutti i brani
 };
 
-export function setCover(bytes, previewSrc) {
+export function setCover(bytes) {
     state.cover = bytes;
-    const img = document.getElementById("coverImg");
-    if (previewSrc) {
-        img.src = previewSrc;
-    } else if (bytes) {
-        img.src = URL.createObjectURL(new Blob([bytes]));
-    } else {
-        img.src = "static/img/default.png";
-    }
+    document.getElementById("coverImg").src = bytes
+        ? URL.createObjectURL(new Blob([bytes]))
+        : "static/img/default.png";
 }

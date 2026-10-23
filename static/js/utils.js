@@ -46,9 +46,3 @@ export function safeFileName(text) {
         .trim()
         .slice(0, 200);
 }
-
-export function setLoading(isLoading) {
-    document.getElementById("uploadSpinner").style.display = isLoading ? "inline-block" : "none";
-    const btn = document.getElementById("finalUpload");
-    if (btn) btn.disabled = isLoading;
-}
