@@ -306,3 +306,83 @@ button:hover {
 .track-status { width: 20px; text-align: center; margin-left: 6px; font-size: 0.9rem; }
 .track-status.ok { color: #198754; }
 .track-status.err { color: #dc3545; }
+
+/* ---- Pagina iniziale: modalità File / YouTube ---- */
+.upload-section { width: 50%; transition: width 0.3s; }
+.upload-section.yt-mode { width: 85%; max-width: 1000px; }
+@media (max-width: 768px) {
+    .upload-section, .upload-section.yt-mode { width: 100%; }
+}
+
+.mode-switch {
+    display: flex;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    background: rgba(255, 255, 255, 0.25);
+    border-radius: 10px;
+    padding: 4px;
+    margin-bottom: 16px;
+    gap: 4px;
+}
+.mode-btn {
+    margin: 0;
+    padding: 6px 22px;
+    background: transparent;
+    color: white;
+    border-radius: 7px;
+}
+.mode-btn:hover { background: rgba(255, 255, 255, 0.2); }
+.mode-btn.active, .mode-btn.active:hover { background: white; color: #4e54c8; }
+
+.yt-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.yt-toolbar select { flex: 1 1 220px; width: auto; border: 0; border-radius: 8px; color: #3b40a4; }
+.yt-btn {
+    margin: 0;
+    padding: 6px 12px;
+    background: white;
+    color: #4e54c8;
+    font-size: 0.875rem;
+}
+.yt-btn:hover { background: #eef0ff; }
+
+.yt-window {
+    position: relative;
+    height: 60vh;
+    border: 2px solid rgba(255, 255, 255, 0.8);
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.6);
+}
+.yt-window iframe { width: 100%; height: 100%; border: 0; background: white; }
+.yt-blocked {
+    position: absolute;
+    inset: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: #3b40a4;
+    text-align: center;
+    padding: 20px;
+}
+.yt-note { color: white; font-size: 0.875rem; margin: 10px 0 0; text-align: center; }
+.yt-note a { color: white; font-weight: 500; }
+
+.page-drop-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1050;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(78, 84, 200, 0.85);
+    border: 4px dashed white;
+    color: white;
+    font-size: 1.6rem;
+    text-align: center;
+}
+.page-drop-overlay.visible { display: flex; }
+.page-drop-overlay > div { pointer-events: none; }
+
+footer .d-flex { flex-wrap: wrap; row-gap: 8px !important; }

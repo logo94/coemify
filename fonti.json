@@ -1,0 +1,11 @@
+{
+  "_istruzioni": "Elenco dei siti per scaricare da YouTube, nell'ordine in cui compaiono nella tendina. 'incorporabile': true = il sito si apre dentro Coemify; false = si apre in una nuova scheda (per i siti che vietano l'incorporamento, come y2mate). Dopo una modifica basta fare commit/push: non serve toccare il codice.",
+  "fonti": [
+    { "nome": "Cobalt · meowing.de",   "url": "https://cobalt.meowing.de/",            "incorporabile": true },
+    { "nome": "Cobalt · canine.tools", "url": "https://cobalt.canine.tools/",          "incorporabile": true },
+    { "nome": "Cobalt · clxxped.lol",  "url": "https://cobalt.clxxped.lol/",           "incorporabile": true },
+    { "nome": "Cobalt · lamps-dev",    "url": "https://cobalt.lamps-dev.dev/",         "incorporabile": true },
+    { "nome": "Cobalt · tame.gg",      "url": "https://cobalt.tame.gg/",               "incorporabile": true },
+    { "nome": "y2mate",                "url": "https://v1.y2mate.nu/",                 "incorporabile": false }
+  ]
+}

@@ -34,16 +34,50 @@
     </div>
 
     <!-- Form iniziale upload -->
-    <div id="uploadSection" class="card bg-transparent border-0 p-4 mb-4 w-50" style="display:none;">
-        <form id="uploadForm">
+    <div id="uploadSection" class="upload-section card bg-transparent border-0 p-4 mb-4" style="display:none;">
+
+        <!-- Scelta della modalità -->
+        <div class="mode-switch" role="tablist" aria-label="Modalità di caricamento">
+            <button type="button" class="mode-btn active" data-mode="file" role="tab" aria-selected="true">File</button>
+            <button type="button" class="mode-btn" data-mode="youtube" role="tab" aria-selected="false">YouTube</button>
+        </div>
+
+        <!-- Modalità File -->
+        <div id="filePanel">
             <div id="dropZone" class="drop-zone">
                 <h2 style="margin-top: 12%;">🎵</h2>
-
                 <p class="mt-4">Drag, Click, Tap</p>
                 <p class="small text-muted">Puoi selezionare più file per album</p>
-                <input type="file" id="audioFile" accept=".mp3,audio/mpeg" hidden multiple>
             </div>
-        </form>
+        </div>
+
+        <!-- Modalità YouTube: siti di download configurati in fonti.json -->
+        <div id="youtubePanel" style="display:none;">
+            <div class="yt-toolbar">
+                <select id="sourceSelect" class="form-select form-select-sm" aria-label="Sito di download"></select>
+                <button type="button" id="nextSource" class="yt-btn" title="Passa al sito successivo">Prova il successivo</button>
+                <button type="button" id="openSourceTab" class="yt-btn" title="Apri questo sito in una nuova scheda">Nuova scheda ↗</button>
+            </div>
+            <div class="yt-window">
+                <iframe id="ytFrame" title="Sito di download" referrerpolicy="no-referrer"></iframe>
+                <div id="ytBlocked" class="yt-blocked" style="display:none;">
+                    <p><strong id="ytBlockedName"></strong> non si può mostrare dentro Coemify.</p>
+                    <button type="button" id="ytBlockedOpen" class="yt-btn">Apri in una nuova scheda ↗</button>
+                </div>
+            </div>
+            <p id="ytFrameNote" class="yt-note">
+                Scaricato l'MP3? Trascinalo in un punto qualsiasi della pagina,
+                oppure <a href="#" id="pickFileLink">sceglilo dal computer</a>.
+                Se il sito non funziona, prova il successivo.
+            </p>
+        </div>
+
+        <input type="file" id="audioFile" accept=".mp3,audio/mpeg" hidden multiple>
+    </div>
+
+    <!-- Rilascio file in qualsiasi punto della pagina -->
+    <div id="pageDropOverlay" class="page-drop-overlay" aria-hidden="true">
+        <div>🎵<br>Rilascia per aprire i brani</div>
     </div>
 
     <!-- Dashboard vera e propria, inizialmente nascosta -->
